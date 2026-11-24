@@ -5,6 +5,8 @@ files reference each other with an `include` directive and compiles them into
 flattened, deterministic `.env` files — so a monorepo with many services can
 share infrastructure configuration instead of copying it into every file.
 
+English | [中文](README_zh.md)
+
 ```dotenv
 # .api.env.example
 include ./template/base.env.example
