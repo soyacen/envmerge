@@ -26,8 +26,18 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
-.env
+# Local build/module cache used inside the sandbox
+.cache/
+
+# Build output
+bin/
+dist/
+
+# Generated dotenv files. Templates (*.env.example) stay tracked; so do the
+# golden expected.env fixtures under testdata.
+*.env
+!testdata/**/*.env
+!*.env.example
 
 # Editor/IDE
 # .idea/

@@ -1,0 +1,47 @@
+version: 2
+
+project_name: envmerge
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd/envmerge
+    binary: envmerge
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/soyacen/envmerge/internal/cli.Version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: soyacen
+    name: envmerge
