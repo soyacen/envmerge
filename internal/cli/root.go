@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 
 	"github.com/urfave/cli/v3"
 
@@ -16,8 +17,25 @@ import (
 	"github.com/soyacen/envmerge/pkg/envmerge"
 )
 
-// Version is injected at build time via -ldflags.
+// Version is optionally injected at build time via -ldflags (make/goreleaser).
+// When it is left at the default, resolveVersion falls back to the module
+// version embedded by `go install github.com/soyacen/envmerge/...@vX.Y.Z`.
 var Version = "dev"
+
+// resolveVersion returns the best available version string, preferring an
+// explicit -ldflags injection and otherwise reading the module version from the
+// build info that the Go toolchain stamps on `go install pkg@version` binaries.
+func resolveVersion() string {
+	if Version != "dev" {
+		return Version
+	}
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		if v := bi.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return Version
+}
 
 var (
 	stdout io.Writer = os.Stdout
@@ -57,7 +75,7 @@ func newApp() *cli.Command {
 		Name:      "envmerge",
 		Usage:     "Compile dotenv templates with include-based composition",
 		UsageText: "envmerge [global options] command [arguments]",
-		Version:   Version,
+		Version:   resolveVersion(),
 		Description: "envmerge merges .env.example templates that reference each\n" +
 			"other with `include`, producing flattened, deterministic .env files.",
 		Commands: []*cli.Command{
@@ -77,9 +95,12 @@ func newApp() *cli.Command {
 // versionCmd prints the semantic version.
 func versionCmd() *cli.Command {
 	return &cli.Command{
-		Name:   "version",
-		Usage:  "Print the envmerge version",
-		Action: func(context.Context, *cli.Command) error { fmt.Fprintln(stdout, "envmerge "+Version); return nil },
+		Name:  "version",
+		Usage: "Print the envmerge version",
+		Action: func(context.Context, *cli.Command) error {
+			fmt.Fprintln(stdout, "envmerge "+resolveVersion())
+			return nil
+		},
 	}
 }
 
