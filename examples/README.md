@@ -44,6 +44,9 @@ envmerge tree examples/deploy/env/.api.env.example
   (proximity / `就近原则`).
 - Real secrets stay empty in templates; production injects them via Kubernetes
   Secrets or a vault, not via committed files.
+- Every comment written in the shared templates survives into the generated
+  file - including the commented-out defaults that document what a value would
+  be, so the compiled `.env` still explains itself.
 
 ## Makefile targets
 

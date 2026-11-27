@@ -24,14 +24,14 @@ const (
 // is zero (design §6).
 const DefaultMaxIncludeDepth = 64
 
-// Options configures an Engine. All fields have sensible defaults via Apply.
+// Options configures an Engine. All fields have sensible defaults via apply.
+// Comments and blank-line grouping are always preserved: the generated file is
+// meant to be read by a human, so there is no mode that throws them away.
 type Options struct {
-	ConflictPolicy     ConflictPolicy
-	MaxIncludeDepth    int
-	PreserveComments   bool
-	PreserveBlankLines bool
-	RootDir            string // limits include resolution
-	Force              bool   // permit overwriting an existing output
+	ConflictPolicy  ConflictPolicy
+	MaxIncludeDepth int
+	RootDir         string // limits include resolution
+	Force           bool   // permit overwriting an existing output
 
 	// Loader overrides file access (used by tests to inject fstest.MapFS).
 	Loader loader.Loader

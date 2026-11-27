@@ -116,12 +116,10 @@ func optionsFrom(c *cli.Command) envmerge.Options {
 		policy = merger.ConflictLocalWins
 	}
 	return envmerge.Options{
-		ConflictPolicy:     policy,
-		MaxIncludeDepth:    int(c.Int("max-depth")),
-		PreserveComments:   c.Bool("comments"),
-		PreserveBlankLines: c.Bool("blank-lines"),
-		RootDir:            c.String("root"),
-		Force:              c.Bool("force"),
+		ConflictPolicy:  policy,
+		MaxIncludeDepth: int(c.Int("max-depth")),
+		RootDir:         c.String("root"),
+		Force:           c.Bool("force"),
 	}
 }
 

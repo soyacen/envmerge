@@ -28,11 +28,8 @@ func New(opts Options) *Engine {
 		opts:     o,
 		resolver: resolver.New(o.Loader, o.MaxIncludeDepth, o.RootDir),
 		merger:   merger.New(),
-		renderer: renderer.New(renderer.Options{
-			PreserveComments:   o.PreserveComments,
-			PreserveBlankLines: o.PreserveBlankLines,
-		}),
-		writer: writer.New(),
+		renderer: renderer.New(),
+		writer:   writer.New(),
 	}
 }
 

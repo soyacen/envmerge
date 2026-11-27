@@ -44,6 +44,28 @@ HTTP_PORT=8080 # an inline comment
 # include ./disabled.env.example   <- a commented include does nothing
 ```
 
+Every comment line in every reachable template is copied into the generated
+file, in template order:
+
+| Written in a template                       | Where it lands in the output                    |
+| ------------------------------------------- | ----------------------------------------------- |
+| Section header above a variable             | Directly above that assignment                  |
+| File header (above an `include`)            | Kept, before the content that follows           |
+| Above an `include` directive                | Kept, directly above the included content      |
+| A template with **no assignments at all**   | Kept in full (defaults catalogues survive)      |
+| Commented-out defaults (`# PORT=3306`)      | Kept verbatim; `#` lines never reach the app    |
+| Dangling comment at end of file             | Kept at the end of its section                  |
+| Above a declaration that **loses** a conflict | Relocated above the surviving assignment, so it still documents the value in use |
+| Inline (`KEY=value # note`)                 | Kept on the winning declaration's line          |
+
+Blank lines behave the same way: the grouping of the templates is preserved, a
+run of blank lines collapses to one, and the output never begins or ends with a
+blank line. Because includes are expanded where they are declared, each expanded
+template starts a new group separated by one blank line.
+
+Commented-out assignments are documentation only: dotenv readers ignore `#`
+lines, so a template can list defaults without activating them.
+
 ## Include
 
 Include another template so its variables become part of this one:
@@ -96,10 +118,13 @@ envmerge never touches the current process environment and never calls
 
 - Every variable appears exactly once.
 - A variable is emitted at the position where it was **first seen** during a
-  depth-first traversal that visits includes before a file's own declarations.
-- Overriding changes only the value, never the position, comment grouping or
-  blank-line layout — so repeated runs are byte-identical and git diffs stay
-  meaningful.
+  depth-first traversal that expands each `include` at the line where it is
+  declared, so the output follows the order the templates were written in.
+- Overriding changes only the value, never the position, and a comment can only
+  move from a losing declaration to the assignment that replaced it — so
+  repeated runs are byte-identical and git diffs stay meaningful.
+- A template reached through several include paths (a diamond) contributes each
+  of its comment lines once.
 
 See the README for the full precedence rules (`就近原则`) and the `--conflict`
 policies.

@@ -17,8 +17,6 @@ func generateCmd() *cli.Command {
 		&cli.BoolFlag{Name: "force", Aliases: []string{"f"}, Usage: "overwrite an existing output file"},
 		&cli.BoolFlag{Name: "dry-run", Usage: "preview the result on stdout without writing"},
 		&cli.BoolFlag{Name: "stdout", Usage: "write the result to stdout instead of a file"},
-		&cli.BoolFlag{Name: "comments", Value: true, Usage: "preserve comments"},
-		&cli.BoolFlag{Name: "blank-lines", Value: true, Usage: "preserve blank-line grouping"},
 		&cli.StringFlag{Name: "dir", Usage: "directory to scan for templates"},
 		&cli.StringFlag{Name: "pattern", Value: "*.env.example", Usage: "glob pattern used with --dir"},
 		&cli.BoolFlag{Name: "recursive", Usage: "recurse into subdirectories when scanning --dir"},

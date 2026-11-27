@@ -7,8 +7,10 @@ import (
 )
 
 // Parse decodes template content into a Document. The returned nodes preserve
-// original ordering, quoting, comments and blank-line context. Parse never
-// expands variables and never executes shell syntax.
+// original ordering, quoting, comments and blank lines. Every comment line and
+// every blank line becomes a node of its own, so nothing a human wrote in a
+// template is lost before the merge stage. Parse never expands variables and
+// never executes shell syntax.
 func Parse(path string, content []byte) (*Document, error) {
 	p := &parser{path: path}
 	return p.parse(content)
@@ -32,45 +34,31 @@ func (p *parser) parse(content []byte) (*Document, error) {
 	lines := splitLines(text)
 	doc := &Document{Path: p.path}
 
-	var (
-		commentRun []string
-		blankSeen  bool
-	)
-
 	for i := 0; i < len(lines); {
 		ln := lines[i]
 		trimmed := strings.TrimSpace(ln.text)
+		pos := diagnostic.Position{File: p.path, Line: ln.num, Column: indentWidth(ln.text) + 1}
 
 		if trimmed == "" {
-			blankSeen = true
-			doc.Nodes = append(doc.Nodes, Node{
-				Kind:     NodeBlank,
-				Position: diagnostic.Position{File: p.path, Line: ln.num},
-			})
+			doc.Nodes = append(doc.Nodes, Node{Kind: NodeBlank, Position: pos})
 			i++
 			continue
 		}
 
 		if strings.HasPrefix(trimmed, "#") {
-			commentRun = append(commentRun, trimmed)
 			doc.Nodes = append(doc.Nodes, Node{
-				Kind:          NodeComment,
-				Position:      diagnostic.Position{File: p.path, Line: ln.num},
-				Raw:           ln.text,
-				InlineComment: commentBody(trimmed),
-				BlankBefore:   blankSeen,
+				Kind:     NodeComment,
+				Position: pos,
+				Raw:      ln.text,
+				Text:     trimmed,
 			})
 			i++
 			continue
 		}
 
-		lead, blank := commentRun, blankSeen
-		commentRun, blankSeen = nil, false
-		pos := diagnostic.Position{File: p.path, Line: ln.num, Column: indentWidth(ln.text) + 1}
-
 		switch {
 		case isInclude(trimmed):
-			node, err := p.parseInclude(ln.text, pos, lead, blank)
+			node, err := p.parseInclude(ln.text, pos)
 			if err != nil {
 				return nil, err
 			}
@@ -82,7 +70,7 @@ func (p *parser) parse(content []byte) (*Document, error) {
 			if key == "" {
 				return nil, diagnostic.Atf(diagnostic.ErrInvalidSyntax, pos, ln.text, "unset requires a variable name")
 			}
-			doc.Nodes = append(doc.Nodes, Node{Kind: NodeUnset, Position: pos, Raw: ln.text, Key: key, LeadingComments: lead, BlankBefore: blank})
+			doc.Nodes = append(doc.Nodes, Node{Kind: NodeUnset, Position: pos, Raw: ln.text, Key: key})
 			i++
 
 		case isKeyword(trimmed, "required"):
@@ -90,7 +78,7 @@ func (p *parser) parse(content []byte) (*Document, error) {
 			if key == "" {
 				return nil, diagnostic.Atf(diagnostic.ErrInvalidSyntax, pos, ln.text, "required requires a variable name")
 			}
-			doc.Nodes = append(doc.Nodes, Node{Kind: NodeRequired, Position: pos, Raw: ln.text, Key: key, LeadingComments: lead, BlankBefore: blank})
+			doc.Nodes = append(doc.Nodes, Node{Kind: NodeRequired, Position: pos, Raw: ln.text, Key: key})
 			i++
 
 		case isShellDirective(trimmed):
@@ -98,7 +86,7 @@ func (p *parser) parse(content []byte) (*Document, error) {
 				"unsupported directive %q: envmerge merges templates and never executes shell commands", firstWord(trimmed))
 
 		default:
-			node, consumed, err := p.parseVariable(lines, i, pos, lead, blank)
+			node, consumed, err := p.parseVariable(lines, i, pos)
 			if err != nil {
 				return nil, err
 			}
@@ -112,7 +100,7 @@ func (p *parser) parse(content []byte) (*Document, error) {
 
 // parseVariable handles single- and multi-line quoted values, returning the node
 // and how many physical lines it consumed.
-func (p *parser) parseVariable(lines []physicalLine, start int, pos diagnostic.Position, lead []string, blank bool) (Node, int, error) {
+func (p *parser) parseVariable(lines []physicalLine, start int, pos diagnostic.Position) (Node, int, error) {
 	ln := lines[start].text
 	eq := strings.IndexByte(ln, '=')
 	if eq < 0 {
@@ -126,7 +114,7 @@ func (p *parser) parseVariable(lines []physicalLine, start int, pos diagnostic.P
 	rest := strings.TrimLeft(ln[eq+1:], " \t")
 	consumed := 1
 
-	node := Node{Kind: NodeVariable, Position: pos, Key: key, LeadingComments: lead, BlankBefore: blank}
+	node := Node{Kind: NodeVariable, Position: pos, Key: key}
 
 	if len(rest) > 0 && (rest[0] == '"' || rest[0] == '\'') {
 		quote := rest[0]
@@ -151,7 +139,7 @@ func (p *parser) parseVariable(lines []physicalLine, start int, pos diagnostic.P
 	return node, consumed, nil
 }
 
-func (p *parser) parseInclude(text string, pos diagnostic.Position, lead []string, blank bool) (Node, error) {
+func (p *parser) parseInclude(text string, pos diagnostic.Position) (Node, error) {
 	trimmed := strings.TrimSpace(text)
 	rest := trimmed[len("include"):]
 	optional := false
@@ -168,12 +156,10 @@ func (p *parser) parseInclude(text string, pos diagnostic.Position, lead []strin
 		return Node{}, diagnostic.Atf(diagnostic.ErrInvalidInclude, pos, text, "%s", err)
 	}
 	return Node{
-		Kind:            NodeInclude,
-		Position:        pos,
-		Raw:             text,
-		IncludePath:     path,
-		Optional:        optional,
-		LeadingComments: lead,
-		BlankBefore:     blank,
+		Kind:        NodeInclude,
+		Position:    pos,
+		Raw:         text,
+		IncludePath: path,
+		Optional:    optional,
 	}, nil
 }

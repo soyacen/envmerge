@@ -107,14 +107,16 @@ envmerge --version
 | `--stdout`        | `false`          | generate                         | Write result to stdout                     |
 | `--conflict`      | `local-wins`     | all                              | `local-wins\|last-wins\|first-wins\|error` |
 | `--max-depth`     | `64`             | all                              | Maximum include recursion depth            |
-| `--comments`      | `true`           | generate/check/diff/watch        | Preserve comments                          |
-| `--blank-lines`   | `true`           | generate/check/diff/watch        | Preserve blank-line grouping               |
 | `--dir`           | —                | generate/validate/check          | Directory to scan                          |
 | `--pattern`       | `*.env.example`  | generate/validate/check          | Glob used with `--dir`                     |
 | `--recursive`     | `false`          | generate/validate/check          | Recurse when scanning `--dir`              |
 | `--root`          | —                | all                              | Restrict include resolution to a directory |
 | `--verbose, -v`   | `false`          | all                              | Print override diagnostics                 |
 | `--quiet, -q`     | `false`          | all                              | Suppress informational output              |
+
+Comments and blank-line grouping are always preserved; there is no flag to
+strip them, because the generated file is meant to stay readable and to carry
+the documentation written in the templates.
 
 ## Exit codes
 

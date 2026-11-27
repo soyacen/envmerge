@@ -27,6 +27,9 @@ envmerge generate .api.env.example   # -> .api.env（不含 include，可直接�
 ## 为什么要用它
 
 - **可组合** —— 引用共享模板，并支持递归引用（模板还能再引用其他模板）。
+- **保留文档** —— 每个模板里的每条注释都会原样进入生成文件：文件头注释、分段
+  说明、只有注释的「默认值目录」模板、`include` 上方的注释、以及文件末尾的悬空
+  注释。无需开关，也不会丢失。
 - **私有优先** —— 服务自身的变量始终覆盖其引用的公共模板。
 - **确定性** —— 相同输入始终产出逐字节一致的结果。
 - **安全** —— 绝不执行 shell 命令；不带 `--force` 绝不覆盖已存在的 `.env`；
@@ -66,8 +69,10 @@ go install github.com/soyacen/envmerge/cmd/envmerge@latest
 2. 同一深度的多个 include 之间，后声明者优先。
 3. 同一文件内的重复定义，后出现的一行优先。
 
-每个变量在输出中只出现一次，且位于它**第一次出现**的位置，因此注释与分组保持
-稳定、diff 也保持干净。
+每个变量在输出中只出现一次，位于它**第一次出现**的位置；`include` 在它被声明的
+地方展开，因此生成文件保持模板书写时的分节顺序。注释跟着它所要说明的行：写在
+「冲突落选声明」上方的注释块会被搬到最终生效的赋值行正上方（来源可由 `explain`
+与 `--verbose` 查到），因此不会有注释被丢弃或变成无主的孤立注释。
 
 `--conflict` 提供四种策略：`local-wins`（默认，即上述规则）、`last-wins`、
 `first-wins`、`error`。
@@ -87,8 +92,7 @@ go install github.com/soyacen/envmerge/cmd/envmerge@latest
 import "github.com/soyacen/envmerge/pkg/envmerge"
 
 engine := envmerge.New(envmerge.Options{
-    PreserveComments:   true,
-    PreserveBlankLines: true,
+    ConflictPolicy: envmerge.LocalWins, // 注释与空行分组始终保留
 })
 res, err := engine.Generate(ctx, ".api.env.example", "")
 ```

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -149,22 +150,25 @@ func TestUnsetAndRequired(t *testing.T) {
 	}
 }
 
-func TestLeadingCommentsAndBlankBefore(t *testing.T) {
-	doc := nodes(t, "# Header\nA=1\nB=2\n\n# Group\nC=3\n")
-	var a, c *Node
-	for i := range doc.Nodes {
-		switch doc.Nodes[i].Key {
-		case "A":
-			a = &doc.Nodes[i]
-		case "C":
-			c = &doc.Nodes[i]
+func TestCommentsAndBlankLinesAreNodesOfTheirOwn(t *testing.T) {
+	doc := nodes(t, "# Header\nA=1\nB=2\n\n# Group\nC=3\n# dangling\n")
+	want := []NodeKind{
+		NodeComment, NodeVariable, NodeVariable,
+		NodeBlank, NodeComment, NodeVariable, NodeComment,
+	}
+	if got := fmt.Sprint(kinds(doc)); got != fmt.Sprint(want) {
+		t.Fatalf("node stream = %s, want %s", got, want)
+	}
+	if doc.Nodes[0].Text != "# Header" {
+		t.Errorf("comment text = %q, want %q", doc.Nodes[0].Text, "# Header")
+	}
+	if doc.Nodes[len(doc.Nodes)-1].Text != "# dangling" {
+		t.Errorf("dangling comment lost: %+v", doc.Nodes[len(doc.Nodes)-1])
+	}
+	for _, n := range doc.Nodes {
+		if n.Kind == NodeVariable && n.Key == "A" && n.Position.Line != 2 {
+			t.Errorf("A position = %+v, want line 2", n.Position)
 		}
-	}
-	if a == nil || strings.Join(a.LeadingComments, ",") != "# Header" {
-		t.Errorf("A leading comments wrong: %#v", a)
-	}
-	if c == nil || !c.BlankBefore {
-		t.Errorf("C should have BlankBefore, got %+v", c)
 	}
 }
 

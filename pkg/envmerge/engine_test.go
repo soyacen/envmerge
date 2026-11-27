@@ -34,7 +34,7 @@ func TestGoldenFiles(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			eng := New(Options{PreserveComments: true, PreserveBlankLines: true})
+			eng := New(Options{})
 			res, err := eng.Render(context.Background(), input)
 			if err != nil {
 				t.Fatalf("render: %v", err)
@@ -68,7 +68,7 @@ func TestIdempotentGenerate(t *testing.T) {
 	src := filepath.Join("..", "..", "testdata", "golden", "basic")
 	copyTree(t, src, dir)
 
-	eng := New(Options{PreserveComments: true, PreserveBlankLines: true, Force: true})
+	eng := New(Options{Force: true})
 	input := filepath.Join(dir, "input.env.example")
 	first, err := eng.Generate(context.Background(), input, filepath.Join(dir, "out.env"))
 	if err != nil {

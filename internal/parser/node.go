@@ -38,8 +38,13 @@ func (k NodeKind) String() string {
 	}
 }
 
-// Node is a single logical element of a template document. Unused fields are
-// left at their zero value for the relevant kind.
+// Node is a single logical element of a template document: one physical line,
+// except for a multi-line quoted variable, which spans every line of its value.
+// Unused fields are left at their zero value for the relevant kind.
+//
+// Nodes are recorded verbatim and in source order. Comments and blank lines are
+// first-class nodes; no node claims ownership of the comments around it, so the
+// merger can decide where every comment belongs.
 type Node struct {
 	Kind     NodeKind
 	Position diagnostic.Position
@@ -55,18 +60,14 @@ type Node struct {
 	Value string
 	// InlineComment is a trailing comment (without the leading '#'), if any.
 	InlineComment string
+	// Text is a full-line comment for NodeComment, whitespace-trimmed and
+	// keeping its leading '#', e.g. "# MySQL defaults".
+	Text string
 
 	// IncludePath is the (already trimmed) path argument of an include.
 	IncludePath string
 	// Optional marks an "include?" directive that must not fail when missing.
 	Optional bool
-
-	// LeadingComments holds the contiguous comment lines directly above this
-	// statement, used to reproduce grouped output.
-	LeadingComments []string
-	// BlankBefore records whether a blank line separated this statement from
-	// the previous statement in the source file.
-	BlankBefore bool
 }
 
 // Document is the parsed representation of one template file.

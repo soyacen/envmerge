@@ -14,8 +14,6 @@ import (
 func watchCmd() *cli.Command {
 	flags := withFlags(mergeFlags(),
 		&cli.StringFlag{Name: "output", Aliases: []string{"o"}, Usage: "explicit output path"},
-		&cli.BoolFlag{Name: "comments", Value: true, Usage: "preserve comments"},
-		&cli.BoolFlag{Name: "blank-lines", Value: true, Usage: "preserve blank-line grouping"},
 	)
 	return &cli.Command{
 		Name:      "watch",

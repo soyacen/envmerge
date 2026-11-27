@@ -29,6 +29,10 @@ envmerge generate .api.env.example   # -> .api.env (no includes, ready to use)
 
 - **Composable** — reference shared templates recursively (templates can include
   templates).
+- **Documented** — every comment in every template survives into the generated
+  file: file headers, section notes, comment-only "defaults catalogue" files,
+  comments above an `include`, and dangling notes at end of file. Nothing to
+  switch on, nothing to lose.
 - **Private-first** — a service's own variables always win over included ones.
 - **Deterministic** — the same inputs always produce byte-identical output.
 - **Safe** — never executes shell commands, never overwrites an existing `.env`
@@ -72,8 +76,12 @@ declaration order:
 2. Among includes at the same depth, the later one wins.
 3. Within one file, the later line wins.
 
-Each variable appears exactly once in the output, at the position where it was
-**first seen**, so comments and grouping stay stable and diffs remain clean.
+Each variable appears exactly once, at the position where it was **first seen**;
+`include` is expanded where it is declared, so the generated file keeps the
+section order the templates were written in. Comments stay with the lines they
+document: the comment run written above a declaration that loses a conflict is
+relocated directly above the surviving assignment (its origin is reported by
+`explain` and `--verbose`), so no comment is ever left dangling or dropped.
 
 Four policies are available via `--conflict`: `local-wins` (default, the rule
 above), `last-wins`, `first-wins`, and `error`.
@@ -93,8 +101,7 @@ The engine is importable as a library:
 import "github.com/soyacen/envmerge/pkg/envmerge"
 
 engine := envmerge.New(envmerge.Options{
-    PreserveComments:   true,
-    PreserveBlankLines: true,
+    ConflictPolicy: envmerge.LocalWins, // comments and blank lines always kept
 })
 res, err := engine.Generate(ctx, ".api.env.example", "")
 ```

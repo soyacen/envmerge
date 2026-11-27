@@ -14,8 +14,6 @@ import (
 func diffCmd() *cli.Command {
 	flags := withFlags(mergeFlags(),
 		&cli.StringFlag{Name: "output", Aliases: []string{"o"}, Usage: "generated file to diff against"},
-		&cli.BoolFlag{Name: "comments", Value: true, Usage: "preserve comments"},
-		&cli.BoolFlag{Name: "blank-lines", Value: true, Usage: "preserve blank-line grouping"},
 	)
 	return &cli.Command{
 		Name:      "diff",
