@@ -4,90 +4,74 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to update to (e.g., v1.2.3)"
+        description: "Version to release (e.g., v1.2.3)"
         required: true
 
 jobs:
-  update-version:
+  release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 需要写入权限来直接提交更改
+      contents: write # 需要写入权限来提交 VERSION、推送 tag 并发布 Release
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: main # 总是检出 main 分支
+          fetch-depth: 0 # goreleaser 需要完整历史与标签
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.27.1"
+          go-version-file: go.mod
 
       - name: Validate and use input version
         id: get_version
         run: |
           VERSION=${{ github.event.inputs.version }}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Using input version: $VERSION"
 
-          # 验证版本格式
-          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+          # 验证版本格式 vX.Y.Z
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Error: Version does not match pattern vX.Y.Z"
             exit 1
           fi
 
-      - name: Update version in source code
+          # tag 用带 v 前缀，VERSION 文件沿用仓库现有格式（不带 v）
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "RAW_VERSION=${VERSION#v}" >> "$GITHUB_ENV"
+          echo "Using input version: $VERSION"
+
+      - name: Update VERSION file
         run: |
-          # 替换 cmd/protoc-gen-goose/main.go 文件中的版本号
-          sed -i "s/var Version = \".*\"/var Version = \"$VERSION\"/" cmd/protoc-gen-goose/main.go
-          echo "Updated version in cmd/protoc-gen-goose/main.go to $VERSION"
+          # envmerge 的规范版本存于 VERSION 文件；
+          # internal/cli.Version 在构建时通过 -ldflags 注入，无需改动源码。
+          printf '%s\n' "$RAW_VERSION" > VERSION
+          echo "Updated VERSION file to $RAW_VERSION"
 
-          sed -i "s|github.com/soyacen/goose v[0-9]\+\.[0-9]\+\.[0-9]\+|github.com/soyacen/goose $VERSION|g" middleware/jwtauth/go.mod
-          echo "Updated version in middleware/jwtauth/go.mod to $VERSION"
-
-          sed -i "s|github.com/soyacen/goose v[0-9]\+\.[0-9]\+\.[0-9]\+|github.com/soyacen/goose $VERSION|g" middleware/otel/go.mod
-          echo "Updated version in middleware/otel/go.mod to $VERSION"
-
-          sed -i "s|github.com/soyacen/goose v[0-9]\+\.[0-9]\+\.[0-9]\+|github.com/soyacen/goose $VERSION|g" middleware/limiter/go.mod
-          echo "Updated version in middleware/limiter/go.mod to $VERSION"
       - name: Commit and push changes directly
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add cmd/protoc-gen-goose/main.go
-          git add middleware/jwtauth/go.mod
-          git add middleware/otel/go.mod
-          git add middleware/limiter/go.mod
-          git commit -m "chore: update version to $VERSION"
+          git add VERSION
+          git commit -m "chore: release $VERSION"
           git push
 
       - name: Create and push tag
         run: |
-          git tag middleware/jwtauth/$VERSION
-          git push origin middleware/jwtauth/$VERSION
-          git tag middleware/otel/$VERSION
-          git push origin middleware/otel/$VERSION
-          git tag middleware/limiter/$VERSION
-          git push origin middleware/limiter/$VERSION
-          git tag $VERSION
-          git push origin $VERSION
-          echo "Tag ${{ env.VERSION }} created and pushed successfully"
+          git tag "$VERSION"
+          git push origin "$VERSION"
+          echo "Tag $VERSION created and pushed successfully"
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.VERSION }}
-          release_name: Release ${{ env.VERSION }}
-          draft: false
-          prerelease: false
 
       - name: Output completion message
         run: |
           echo "Version updated to $VERSION"
-          echo "Tag $VERSION has been created and pushed automatically"
-          echo "Release workflow will run automatically after pushing the tag."
+          echo "Tag $VERSION created and GitHub Release published by GoReleaser"
